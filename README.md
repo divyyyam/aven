@@ -8,29 +8,6 @@ The central design rule is simple:
 
 Aven is a backend/infrastructure project. It intentionally has no UI and no real payment-rail integration; the focus is correctness under duplicate delivery, partial failure, asynchronous processing, and recovery.
 
-## Architecture
-
-```mermaid
-flowchart LR
-    Client --> Gateway[API Gateway]
-    Gateway --> Ledger[Ledger Service]
-    Gateway --> Account[Account Service]
-    Gateway --> Settlement[Settlement Service]
-    Gateway --> Reconciliation[Reconciliation Service]
-
-    Ledger --> LedgerDB[(ledger_db)]
-    LedgerDB --> Outbox[Ledger Outbox Publisher]
-    Outbox --> Kafka[(Kafka)]
-
-    Kafka --> Account
-    Kafka --> Settlement
-    Kafka --> Reconciliation
-
-    Account --> AccountDB[(account_db)]
-    Settlement --> SettlementDB[(settlement_db)]
-    Reconciliation --> ReconciliationDB[(reconciliation_db)]
-    Reconciliation -->|balance API| Account
-```
 
 | Component | Port | Responsibility |
 | --- | ---: | --- |
