@@ -25,9 +25,7 @@ ps:
 	$(COMPOSE) ps
 
 test:
-	@for service in ledger account settlement reconciliation gateway; do \
-		(cd services/$$service && MAVEN_USER_HOME=$$(pwd)/../../.m2 ./mvnw test); \
-	done
+	MAVEN_USER_HOME=$(CURDIR)/.m2 services/ledger/mvnw -f pom.xml test
 
 clean:
 	@find services -type d -name target -prune -exec rm -rf {} +
