@@ -4,3 +4,5 @@ target
 .env.example
 prd.*
 docs/
+checkpoints.txt
+checkpoints.local.txt
