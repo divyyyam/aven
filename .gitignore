@@ -1,6 +1,7 @@
 # Build outputs and local dependency caches
 target/
 .m2/
+.excalidraw
 node_modules/
 
 # Local configuration
@@ -10,5 +11,4 @@ node_modules/
 # Local planning and generated documentation
 prd.*
 docs/
-checkpoints.txt
 checkpoints.local.txt
