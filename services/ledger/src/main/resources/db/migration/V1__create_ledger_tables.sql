@@ -1,8 +1,7 @@
 CREATE TABLE ledger_transactions (
     id UUID PRIMARY KEY,
     idempotency_key VARCHAR(255) NOT NULL UNIQUE,
-    reversed_transaction_id UUID REFERENCES ledger_transactions(id),
-    reversed_by_transaction_id UUID UNIQUE REFERENCES ledger_transactions(id),
+    reversed_transaction_id UUID UNIQUE REFERENCES ledger_transactions(id),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 

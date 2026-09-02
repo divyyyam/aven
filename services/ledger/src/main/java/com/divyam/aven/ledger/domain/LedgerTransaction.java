@@ -25,9 +25,6 @@ public class LedgerTransaction {
     @Column(name = "reversed_transaction_id", updatable = false)
     private UUID reversedTransactionId;
 
-    @Column(name = "reversed_by_transaction_id")
-    private UUID reversedByTransactionId;
-
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -57,17 +54,9 @@ public class LedgerTransaction {
         entries.add(new LedgerEntry(this, accountId, amount, direction));
     }
 
-    public void markReversedBy(UUID reversalTransactionId) {
-        if (reversedByTransactionId != null) {
-            throw new ReversalNotAllowedException("Transaction has already been reversed");
-        }
-        reversedByTransactionId = reversalTransactionId;
-    }
-
     public UUID getId() { return id; }
     public String getIdempotencyKey() { return idempotencyKey; }
     public UUID getReversedTransactionId() { return reversedTransactionId; }
-    public UUID getReversedByTransactionId() { return reversedByTransactionId; }
     public Instant getCreatedAt() { return createdAt; }
     public List<LedgerEntry> getEntries() { return List.copyOf(entries); }
 }

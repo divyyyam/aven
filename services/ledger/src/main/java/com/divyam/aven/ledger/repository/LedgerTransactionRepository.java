@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface LedgerTransactionRepository extends JpaRepository<LedgerTransaction, UUID> {
 
     Optional<LedgerTransaction> findByIdempotencyKey(String idempotencyKey);
+    Optional<LedgerTransaction> findByReversedTransactionId(UUID transactionId);
 
     @EntityGraph(attributePaths = "entries")
     @Query("select transaction from LedgerTransaction transaction where transaction.id = :id")

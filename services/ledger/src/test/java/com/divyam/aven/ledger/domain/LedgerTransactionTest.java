@@ -1,7 +1,6 @@
 package com.divyam.aven.ledger.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -20,22 +19,11 @@ class LedgerTransactionTest {
         LedgerTransaction reversal = LedgerTransaction.reversalOf("reversal-key", original.getId());
         original.getEntries().forEach(entry -> reversal.addEntry(
                 entry.getAccountId(), entry.getAmount(), entry.getDirection().inverse()));
-        original.markReversedBy(reversal.getId());
-
         assertThat(original.getEntries()).extracting(LedgerEntry::getDirection)
                 .containsExactly(EntryDirection.DEBIT, EntryDirection.CREDIT);
         assertThat(reversal.getReversedTransactionId()).isEqualTo(original.getId());
         assertThat(reversal.getEntries()).extracting(LedgerEntry::getDirection)
                 .containsExactly(EntryDirection.CREDIT, EntryDirection.DEBIT);
-    }
-
-    @Test
-    void transactionCannotBeReversedTwice() {
-        LedgerTransaction transaction = LedgerTransaction.create("key");
-        transaction.markReversedBy(UUID.randomUUID());
-
-        assertThatThrownBy(() -> transaction.markReversedBy(UUID.randomUUID()))
-                .isInstanceOf(ReversalNotAllowedException.class);
     }
 
     @Test

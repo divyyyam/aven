@@ -33,17 +33,19 @@ public class TransactionController {
     @PostMapping("/transactions")
     public ResponseEntity<TransactionResponse> create(
             @RequestHeader("Idempotency-Key") @NotBlank String idempotencyKey,
+            @RequestHeader(value = "X-Correlation-ID", required = false) String traceId,
             @Valid @RequestBody CreateTransactionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(TransactionResponse.from(ledgerService.create(idempotencyKey, request)));
+                .body(TransactionResponse.from(ledgerService.create(idempotencyKey, traceId(traceId), request)));
     }
 
     @PostMapping("/transactions/{transactionId}/reverse")
     public ResponseEntity<TransactionResponse> reverse(
             @PathVariable UUID transactionId,
-            @RequestHeader("Idempotency-Key") @NotBlank String idempotencyKey) {
+            @RequestHeader("Idempotency-Key") @NotBlank String idempotencyKey,
+            @RequestHeader(value = "X-Correlation-ID", required = false) String traceId) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(TransactionResponse.from(ledgerService.reverse(transactionId, idempotencyKey)));
+                .body(TransactionResponse.from(ledgerService.reverse(transactionId, idempotencyKey, traceId(traceId))));
     }
 
     @GetMapping("/accounts/{accountId}/entries")
@@ -53,5 +55,11 @@ public class TransactionController {
         Pageable stablePage = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
                 Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
         return ledgerService.findEntries(accountId, stablePage).map(EntryResponse::from);
+    }
+
+    private String traceId(String suppliedTraceId) {
+        return suppliedTraceId == null || suppliedTraceId.isBlank()
+                ? UUID.randomUUID().toString()
+                : suppliedTraceId;
     }
 }

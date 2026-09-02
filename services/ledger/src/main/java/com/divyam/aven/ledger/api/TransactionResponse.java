@@ -8,7 +8,6 @@ import java.util.UUID;
 public record TransactionResponse(
         UUID id,
         UUID reversedTransactionId,
-        UUID reversedByTransactionId,
         Instant createdAt,
         List<EntryResponse> entries) {
 
@@ -16,7 +15,6 @@ public record TransactionResponse(
         return new TransactionResponse(
                 transaction.getId(),
                 transaction.getReversedTransactionId(),
-                transaction.getReversedByTransactionId(),
                 transaction.getCreatedAt(),
                 transaction.getEntries().stream().map(EntryResponse::from).toList());
     }
