@@ -1,0 +1,3 @@
+CREATE TABLE accounts (id UUID PRIMARY KEY, owner_ref VARCHAR(255) NOT NULL, status VARCHAR(16) NOT NULL, created_at TIMESTAMP WITH TIME ZONE NOT NULL);
+CREATE TABLE account_balances (account_id UUID PRIMARY KEY REFERENCES accounts(id), balance NUMERIC(19,4) NOT NULL DEFAULT 0, last_event_id UUID, updated_at TIMESTAMP WITH TIME ZONE NOT NULL);
+CREATE TABLE processed_events (event_id UUID PRIMARY KEY, consumed_at TIMESTAMP WITH TIME ZONE NOT NULL);
