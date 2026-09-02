@@ -1,7 +1,13 @@
-node_modules
-target
+# Build outputs and local dependency caches
+target/
+.m2/
+node_modules/
+
+# Local configuration
 .env
 .env.example
+
+# Local planning and generated documentation
 prd.*
 docs/
 checkpoints.txt
