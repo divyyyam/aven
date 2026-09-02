@@ -1,0 +1,6 @@
+.git
+.m2
+**/target
+docs
+node_modules
+.env

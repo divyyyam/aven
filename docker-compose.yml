@@ -1,0 +1,219 @@
+name: aven
+
+x-postgres-environment: &postgres-environment
+  POSTGRES_USER: aven
+  POSTGRES_PASSWORD: aven
+
+x-service-healthcheck: &service-healthcheck
+  interval: 10s
+  timeout: 5s
+  retries: 12
+  start_period: 30s
+
+services:
+  kafka:
+    image: bitnami/kafka:3.9
+    environment:
+      KAFKA_ENABLE_KRAFT: "yes"
+      KAFKA_KRAFT_CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
+  kafka-init:
+    image: bitnami/kafka:3.9
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-ec"]
+    command: >-
+      /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists
+      --topic ledger.transaction-created.v1 --partitions 3 --replication-factor 1;
+      /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists
+      --topic settlement.transaction-settled.v1 --partitions 3 --replication-factor 1;
+      /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists
+      --topic settlement.transaction-failed.v1 --partitions 3 --replication-factor 1;
+      /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists
+      --topic reconciliation.drift-detected.v1 --partitions 3 --replication-factor 1;
+      /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists
+      --topic settlement.transaction-created.dlq.v1 --partitions 3 --replication-factor 1
+    restart: "no"
+
+  ledger-db:
+    image: postgres:16-alpine
+    environment:
+      <<: *postgres-environment
+      POSTGRES_DB: ledger_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - ledger_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aven -d ledger_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  account-db:
+    image: postgres:16-alpine
+    environment:
+      <<: *postgres-environment
+      POSTGRES_DB: account_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - account_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aven -d account_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  settlement-db:
+    image: postgres:16-alpine
+    environment:
+      <<: *postgres-environment
+      POSTGRES_DB: settlement_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - settlement_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aven -d settlement_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  reconciliation-db:
+    image: postgres:16-alpine
+    environment:
+      <<: *postgres-environment
+      POSTGRES_DB: reconciliation_db
+    ports:
+      - "5436:5432"
+    volumes:
+      - reconciliation_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aven -d reconciliation_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  ledger:
+    build: ./services/ledger
+    environment:
+      LEDGER_DATABASE_URL: jdbc:postgresql://ledger-db:5432/ledger_db
+      LEDGER_DATABASE_USERNAME: aven
+      LEDGER_DATABASE_PASSWORD: aven
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    ports:
+      - "8081:8081"
+    depends_on:
+      ledger-db:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8081/actuator/health"]
+
+  account:
+    build: ./services/account
+    environment:
+      ACCOUNT_DATABASE_URL: jdbc:postgresql://account-db:5432/account_db
+      ACCOUNT_DATABASE_USERNAME: aven
+      ACCOUNT_DATABASE_PASSWORD: aven
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    ports:
+      - "8082:8082"
+    depends_on:
+      account-db:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8082/actuator/health"]
+
+  settlement:
+    build: ./services/settlement
+    environment:
+      SETTLEMENT_DATABASE_URL: jdbc:postgresql://settlement-db:5432/settlement_db
+      SETTLEMENT_DATABASE_USERNAME: aven
+      SETTLEMENT_DATABASE_PASSWORD: aven
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    ports:
+      - "8083:8083"
+    depends_on:
+      settlement-db:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8083/actuator/health"]
+
+  reconciliation:
+    build: ./services/reconciliation
+    environment:
+      RECONCILIATION_DATABASE_URL: jdbc:postgresql://reconciliation-db:5432/reconciliation_db
+      RECONCILIATION_DATABASE_USERNAME: aven
+      RECONCILIATION_DATABASE_PASSWORD: aven
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      ACCOUNT_SERVICE_URL: http://account:8082
+    ports:
+      - "8084:8084"
+    depends_on:
+      reconciliation-db:
+        condition: service_healthy
+      account:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8084/actuator/health"]
+
+  gateway:
+    build: ./services/gateway
+    environment:
+      LEDGER_SERVICE_URL: http://ledger:8081
+      ACCOUNT_SERVICE_URL: http://account:8082
+      SETTLEMENT_SERVICE_URL: http://settlement:8083
+      RECONCILIATION_SERVICE_URL: http://reconciliation:8084
+    ports:
+      - "8080:8080"
+    depends_on:
+      ledger:
+        condition: service_healthy
+      account:
+        condition: service_healthy
+      settlement:
+        condition: service_healthy
+      reconciliation:
+        condition: service_healthy
+    healthcheck:
+      <<: *service-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/actuator/health"]
+
+volumes:
+  kafka_data:
+  ledger_db_data:
+  account_db_data:
+  settlement_db_data:
+  reconciliation_db_data:
