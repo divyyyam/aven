@@ -292,20 +292,3 @@ MAVEN_USER_HOME=$PWD/.m2 services/ledger/mvnw -f pom.xml package -DskipTests
 | Settlement provider fails transiently | Item enters `RETRY_PENDING` with exponential backoff. |
 | Settlement exhausts attempts | Item becomes `FAILED`; failure and DLQ events are written through the outbox. |
 | Account projection drifts | Reconciliation records and emits a specific discrepancy. |
-
-## Current status
-
-The core services, migrations, event contracts, reliability patterns, unit tests, and PostgreSQL integration test are implemented. The Maven reactor packages successfully and the Compose model validates.
-
-Before using this as a live interview demo, run and verify the full Compose stack on a Docker-enabled machine and complete a scripted failure/recovery walkthrough. The current development environment did not permit access to the Docker socket, so container startup has not been proven here.
-
-## Deliberate v1 boundaries
-
-- No UI
-- No real ACH/card/payment provider
-- No multi-currency or FX
-- No production authentication/authorization
-- No horizontal-scale/load target
-- No claim that Kafka/PostgreSQL produce end-to-end exactly-once delivery
-
-The next production-hardening steps would add worker row leasing, structured metrics/logging, transport poison-message DLQs, HTTP resilience, schema-registry enforcement, security, and broader Kafka/PostgreSQL integration tests.
